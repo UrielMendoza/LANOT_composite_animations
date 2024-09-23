@@ -11,6 +11,7 @@ import os
 from glob import glob
 import datetime
 from PIL import Image
+import numpy as np
 
 
 def create_output_directories(pathTmp, year_str, pathOutput, compisite):
@@ -27,10 +28,14 @@ def create_output_directories(pathTmp, year_str, pathOutput, compisite):
 
 def convert_tiff_to_png(tiff_file, png_file):
     try:
-        # Abre el archivo TIFF y lo convierte a RGB
+        # Abre el archivo TIFF y lo convierte a RGB usando numpy para asegurar los valores de 0-255
         with Image.open(tiff_file) as img:
-            img = img.convert("RGB")  # Asegurarse de que esté en modo RGB
-            img.save(png_file, "PNG")  # Guardar la imagen como PNG
+            img = img.convert("RGB")  # Convertir la imagen a modo RGB
+            np_img = np.array(img)
+            # Normalizar los valores a 8 bits (0-255) si no están en ese rango
+            np_img = np.clip(np_img, 0, 255).astype(np.uint8)
+            img_rgb = Image.fromarray(np_img, "RGB")
+            img_rgb.save(png_file, "PNG")  # Guardar la imagen como PNG
             print(f"Convertido TIFF a PNG: {png_file}")
     except Exception as e:
         print(f"Error al convertir TIFF a PNG: {e}")
@@ -65,9 +70,9 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
         
         # Añadir "GOES-16 ABI {compisite}" primero y luego la fecha y hora abajo, con GMT-6
         try:
-            os.system(f'ffmpeg -i {png_file} -vf "drawtext=text=\'GOES-16 ABI {compisite}\':fontfile={font_path}:'
+            os.system(f'ffmpeg -i {png_file} -vf "drawtext=text=\'GOES-16 ABI {compisite}\':fontfile={font_path}:' 
                       f'fontsize={font_size}:fontcolor={font_color}:x=10:y=h-th-50, '
-                      f'drawtext=text=\'{date_text} {time_text} GMT-6\':fontfile={font_path}:'
+                      f'drawtext=text=\'{date_text} {time_text} GMT-6\':fontfile={font_path}:' 
                       f'fontsize={font_size}:fontcolor={font_color}:x=10:y=h-th-10" -y {annotated_png}')
         except Exception as e:
             print(f'Error añadiendo texto con ffmpeg al archivo {png_file}: {e}')
@@ -109,44 +114,25 @@ def process_year(year, pathTmp, pathOutput, font_path, font_size, font_color, fr
     # Crear las carpetas necesarias
     year_tmp_folder, output_folder = create_output_directories(pathTmp, year_str, pathOutput, compisite)
     
-    dirs_days = glob(f'{year}/*')
-    print('Numero de dias a procesar:', len(dirs_days))
+    # Cambiar la búsqueda de las imágenes por hora usando glob
+    print('Buscando imágenes para las 11, 13 y 15 horas')
+    hours = {'11': False, '13': False, '15': False}
+    list_hours = []
     
-    for day in dirs_days:
-        print('Procesando dia:', day)
-        files = glob(f'{day}/*')
-        list_hours = []
-        selected_hours = {11: False, 13: False, 15: False}  # Para verificar si ya seleccionamos una imagen para cada hora
-
-        for file in files:
-            name_file = file.split('/')[-1]
-            date = name_file.split('_')[3]
-            hour = name_file.split('_')[4]
-            hour_obj = datetime.datetime.strptime(hour, '%H%MCDMX')
-
-            # Selecciona la primera imagen de cada hora (11, 13, 15) y sigue con la siguiente
-            if hour_obj.hour == 11 and not selected_hours[11]:
-                list_hours.append(file)
-                selected_hours[11] = True  # Marca que ya se seleccionó una imagen de las 11
-            elif hour_obj.hour == 13 and not selected_hours[13]:
-                list_hours.append(file)
-                selected_hours[13] = True  # Marca que ya se seleccionó una imagen de las 13
-            elif hour_obj.hour == 15 and not selected_hours[15]:
-                list_hours.append(file)
-                selected_hours[15] = True  # Marca que ya se seleccionó una imagen de las 15
-
-            # Si ya hemos seleccionado una imagen de cada hora (11, 13 y 15), paramos
-            if all(selected_hours.values()):
-                break
-
-        list_hours.sort()
-        print('Archivos seleccionados para procesar:', len(list_hours))
-
-        # Procesar imágenes
-        list_files = process_images(list_hours, year_tmp_folder, font_path, font_size, font_color, compisite)
+    for hour_str in hours.keys():
+        # Buscar archivos que contengan la hora específica
+        files = glob(f'{year}/*/*_{hour_str}*CDMX*.tif')
+        if files:
+            list_hours.append(files[0])  # Agregar solo el primer archivo encontrado para esa hora
+            print(f'Imagen seleccionada para las {hour_str}: {files[0]}')
     
-        # Crear animación para este año
-        create_animation(list_files, year_str, output_folder, compisite, framerate, outfps, scale)
+    print(f'Total de archivos seleccionados para procesar: {len(list_hours)}')
+
+    # Procesar imágenes
+    list_files = process_images(list_hours, year_tmp_folder, font_path, font_size, font_color, compisite)
+    
+    # Crear animación para este año
+    create_animation(list_files, year_str, output_folder, compisite, framerate, outfps, scale)
 
     # Eliminar los archivos TIFF después de que se haya creado la animación
     delete_tiff_files(year_tmp_folder)
