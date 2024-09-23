@@ -22,9 +22,13 @@ compisite = 'DayLandCloudFire'
 dirs_years = glob(f'{pathInput}/'+compisite+'/*')
 
 for year in dirs_years:
+    print('Procesando año:', year)
     year_str = year.split('/')[-1]
     dirs_days = glob(f'{year}/*')
+    # Informacion del numero de dias a procesar
+    print('Numero de dias a procesar:', len(dirs_days))
     for day in dirs_days:
+        print('Procesando dia:', day)
         files = glob(f'{day}/*')
         list_hours = []
         for file in files:
@@ -41,6 +45,7 @@ for year in dirs_years:
                 list_hours.append(file)
         # Ordena la lista
         list_hours.sort()
+        print('Archivos a procesar:', list_hours)
         # Reproyecta a EPSG:6372 y los guarda en una carpeta temporal con el mismo nombre del archivo original solo en vez de _Geo a _conica
         for hour in list_hours:
             name_file = hour.split('/')[-1]
@@ -52,17 +57,9 @@ for year in dirs_years:
     # Crea primero la carpeta del año si no existe
     if not os.path.exists(f'{pathOutput}/{compisite}'):
         os.makedirs(f'{pathOutput}/{compisite}/{year_str}')
+    # Crea la animacion
+    print('Creando animacion:', f'{pathOutput}/{compisite}/{year_str}/' + 'GOES16_ABI_' + compisite + '_' + year_str + '.mp4')
     os.system(f'ffmpeg -r 3 -i {pathTmp}/animation_%Y%m%d.gif -vf "fps=3,format=yuv420p" {pathOutput}/{compisite}/{year_str}/' + 'GOES16_ABI_' + compisite + '_' + year_str + '.mp4')
 
     # Elimina los archivos temporales
     os.system(f'rm -rf {pathTmp}/*')
-    
-    
-
-    
-
-
-
-
-
-
