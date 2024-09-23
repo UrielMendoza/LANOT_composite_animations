@@ -53,11 +53,9 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
 
         # Convertir TIFF a PNG usando Pillow
         convert_tiff_to_png(tiff_reprojected, png_file)
-
-        # Eliminar archivo .tif después de la conversión
-        if os.path.exists(tiff_reprojected):
-            os.remove(tiff_reprojected)
         
+        # No eliminamos el archivo TIFF aquí, lo hacemos al final del año
+
         # Añadir textos a la imagen PNG usando ffmpeg
         annotated_png = f'{year_tmp_folder}/annotated_{name_file_conica.replace("tif", "png")}'
         date_obj = datetime.datetime.strptime(name_file.split('_')[3], 's%Y%m%d')
@@ -91,6 +89,17 @@ def create_animation(list_files, year_str, output_folder, compisite, framerate, 
                       f'-vf "scale=-2:{scale}" -crf 30 -y {output_folder}/GOES16_ABI_{compisite}_{year_str}.mp4')
         except Exception as e:
             print(f'Error creando animación para {year_str}: {e}')
+
+
+def delete_tiff_files(year_tmp_folder):
+    # Eliminar todos los archivos .tif después de crear la animación
+    tiff_files = glob(f'{year_tmp_folder}/*.tif')
+    for tiff_file in tiff_files:
+        try:
+            os.remove(tiff_file)
+            print(f'Archivo TIFF eliminado: {tiff_file}')
+        except Exception as e:
+            print(f'Error eliminando TIFF: {e}')
 
 
 def process_year(year, pathTmp, pathOutput, font_path, font_size, font_color, framerate, outfps, scale, compisite):
@@ -138,6 +147,9 @@ def process_year(year, pathTmp, pathOutput, font_path, font_size, font_color, fr
     
         # Crear animación para este año
         create_animation(list_files, year_str, output_folder, compisite, framerate, outfps, scale)
+
+    # Eliminar los archivos TIFF después de que se haya creado la animación
+    delete_tiff_files(year_tmp_folder)
 
 
 def main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, font_color, font_path, compisite='DayLandCloudFire'):
