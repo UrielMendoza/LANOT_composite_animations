@@ -1,3 +1,12 @@
+'''
+create_animation_cloud.py
+
+Este script crea una animacion con datos de compuestos especificos RGB de GOES 16, para mostrar la evolucion temporal de los productos.
+
+@autor: urielm
+@date: 2024-09-23
+'''
+
 import os
 from glob import glob
 import datetime
