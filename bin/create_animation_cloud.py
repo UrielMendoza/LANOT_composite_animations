@@ -1,7 +1,7 @@
 '''
 create_animation_cloud.py
 
-Este script crea una amicacion con datos de compuestos especificos RGB de GOES 16, para mostrar la evolucion temporal de los productos.
+Este script crea una animacion con datos de compuestos especificos RGB de GOES 16, para mostrar la evolucion temporal de los productos.
 
 @autor: urielm
 @date: 2024-09-23
@@ -31,21 +31,31 @@ for year in dirs_years:
         print('Procesando dia:', day)
         files = glob(f'{day}/*')
         list_hours = []
+        selected_hours = {11: False, 13: False, 15: False}  # Para rastrear si ya seleccionamos una imagen para estas horas
+
         for file in files:
             # Obtiene los datos del archivo
             name_file = file.split('/')[-1]
-            # Fecha del arcvhivo OR_ABI-L2-MCMIPC-M3_G16_s20181231_1652CDMX_s20181231_2252UTC_DayLandCloudFire_Mex_Geo.tif, obtiene el de CDMX
+            # Fecha del archivo OR_ABI-L2-MCMIPC-M3_G16_s20181231_1652CDMX_s20181231_2252UTC_DayLandCloudFire_Mex_Geo.tif
             date = name_file.split('_')[3]
             hour = name_file.split('_')[4]
-            # Trasforma a formato de fecha
+            # Transforma a formato de fecha
             date = datetime.datetime.strptime(date, 's%Y%m%d')
             hour = datetime.datetime.strptime(hour, '%H%MCDMX')
-            # Agrega a la lista el primer archivo de las 11am, 1pm y 3pm
-            if hour.hour in [11, 13, 15]:
+
+            # Agrega a la lista solo la primera imagen de las 11am, 1pm y 3pm
+            if hour.hour in [11, 13, 15] and not selected_hours[hour.hour]:
                 list_hours.append(file)
+                selected_hours[hour.hour] = True  # Marca que ya encontramos una imagen para esta hora
+
+            # Si ya seleccionamos las 3 imágenes (11, 13 y 15), dejamos de buscar
+            if all(selected_hours.values()):
+                break
+
         # Ordena la lista
         list_hours.sort()
-        print('Archivos a procesar:', list_hours)
+        print('Archivos seleccionados para procesar:', list_hours)
+
         # Reproyecta a EPSG:6372 y los guarda en una carpeta temporal con el mismo nombre del archivo original solo en vez de _Geo a _conica
         for hour in list_hours:
             name_file = hour.split('/')[-1]
@@ -64,7 +74,7 @@ for year in dirs_years:
     # Crea primero la carpeta del año si no existe
     if not os.path.exists(f'{pathOutput}/{compisite}'):
         os.makedirs(f'{pathOutput}/{compisite}/{year_str}')
-    # Renoombra los archivos para que sean numericos
+    # Renombra los archivos para que sean numericos
     list_files = glob(f'{pathTmp}/*.png')
     list_files.sort()
     i = 1
