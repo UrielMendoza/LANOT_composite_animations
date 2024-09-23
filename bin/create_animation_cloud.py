@@ -84,7 +84,7 @@ def process_year(year, pathTmp, pathOutput, font_path, font_size, font_color, fr
         print('Procesando dia:', day)
         files = glob(f'{day}/*')
         list_hours = []
-        selected_hours = {11: False, 13: False, 15: False}
+        selected_hours = {11: False, 13: False, 15: False}  # Para verificar si ya seleccionamos una imagen para cada hora
 
         for file in files:
             name_file = file.split('/')[-1]
@@ -92,10 +92,18 @@ def process_year(year, pathTmp, pathOutput, font_path, font_size, font_color, fr
             hour = name_file.split('_')[4]
             hour_obj = datetime.datetime.strptime(hour, '%H%MCDMX')
 
-            if hour_obj.hour in [11, 13, 15] and not selected_hours[hour_obj.hour]:
+            # Selecciona la primera imagen de cada hora (11, 13, 15) y sigue con la siguiente
+            if hour_obj.hour == 11 and not selected_hours[11]:
                 list_hours.append(file)
-                selected_hours[hour_obj.hour] = True
+                selected_hours[11] = True  # Marca que ya se seleccionó una imagen de las 11
+            elif hour_obj.hour == 13 and not selected_hours[13]:
+                list_hours.append(file)
+                selected_hours[13] = True  # Marca que ya se seleccionó una imagen de las 13
+            elif hour_obj.hour == 15 and not selected_hours[15]:
+                list_hours.append(file)
+                selected_hours[15] = True  # Marca que ya se seleccionó una imagen de las 15
 
+            # Si ya hemos seleccionado una imagen de cada hora (11, 13 y 15), paramos
             if all(selected_hours.values()):
                 break
 
@@ -131,3 +139,4 @@ if __name__ == "__main__":
     
     # Ejecutar el script principal
     main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, font_color, font_path)
+
