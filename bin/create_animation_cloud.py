@@ -1,12 +1,3 @@
-'''
-create_animation_cloud.py
-
-Este script crea una animacion con datos de compuestos especificos RGB de GOES 16, para mostrar la evolucion temporal de los productos.
-
-@autor: urielm
-@date: 2024-09-23
-'''
-
 import os
 from glob import glob
 import datetime
@@ -35,10 +26,9 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
             print(f'El archivo {png_file} ya existe. Saltando procesamiento.')
             continue
         
-        # Proyección a EPSG:6372
+        # Proyección a EPSG:6372 y conversión a PNG en modo RGB
         os.system(f'gdalwarp -t_srs EPSG:6372 {hour} {year_tmp_folder}/{name_file_conica}')
-        # Convertir a PNG
-        os.system(f'gdal_translate -of PNG {year_tmp_folder}/{name_file_conica} {png_file}')
+        os.system(f'gdal_translate -of PNG -expand rgb {year_tmp_folder}/{name_file_conica} {png_file}')
         # Eliminar archivo .tif después de la conversión
         os.remove(f'{year_tmp_folder}/{name_file_conica}')
         
@@ -49,7 +39,7 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
         date_text = date_obj.strftime("%Y-%m-%d")
         time_text = hour_obj.strftime("%H:%M")
         
-        # Añadir "GOES-16 ABI {compisite}" primero y luego la fecha y hora abajo
+        # Añadir "GOES-16 ABI {compisite}" primero y luego la fecha y hora abajo, con GMT-6
         os.system(f'ffmpeg -i {png_file} -vf "drawtext=text=\'GOES-16 ABI {compisite}\':fontfile={font_path}:'
                   f'fontsize={font_size}:fontcolor={font_color}:x=10:y=h-th-50, '
                   f'drawtext=text=\'{date_text} {time_text} GMT-6\':fontfile={font_path}:'
