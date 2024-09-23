@@ -10,8 +10,6 @@ Este script crea una animacion con datos de compuestos especificos RGB de GOES 1
 import os
 from glob import glob
 import datetime
-from PIL import Image
-import numpy as np
 
 
 def create_output_directories(pathTmp, year_str, pathOutput, compisite):
@@ -28,8 +26,8 @@ def create_output_directories(pathTmp, year_str, pathOutput, compisite):
 
 def convert_tiff_to_png_gdal(tiff_file, png_file):
     try:
-        # Usar gdal_translate para convertir TIFF a PNG
-        os.system(f'gdal_translate -of PNG {tiff_file} {png_file}')
+        # Usar gdal_translate para convertir TIFF a PNG, asegurando 8 bits de salida
+        os.system(f'gdal_translate -scale 0 255 0 255 -ot Byte -of PNG {tiff_file} {png_file}')
         print(f"Convertido TIFF a PNG con GDAL: {png_file}")
     except Exception as e:
         print(f"Error al convertir TIFF a PNG con GDAL: {e}")
@@ -78,12 +76,15 @@ def create_animation(list_files, year_str, output_folder, compisite, framerate, 
     if list_files:
         i = 1
         for file in list_files:
-            os.rename(file, f'{os.path.dirname(file)}/s{year_str}_{str(i).zfill(4)}.png')
+            new_file = f'{os.path.dirname(file)}/s{year_str}_{str(i).zfill(4)}.png'
+            os.rename(file, new_file)
             i += 1
 
         # Crear animación con ffmpeg usando los parámetros proporcionados
         try:
-            os.system(f'ffmpeg -framerate {framerate} -pattern_type glob -i "{os.path.dirname(list_files[0])}/s{year_str}_%04d.png" '
+            png_pattern = f"{os.path.dirname(list_files[0])}/s{year_str}_%04d.png"
+            print(f'Generando animación usando los archivos: {png_pattern}')
+            os.system(f'ffmpeg -framerate {framerate} -i "{png_pattern}" '
                       f'-vcodec libx264 -r {outfps} -pix_fmt yuv420p -profile:v baseline -level 3 '
                       f'-vf "scale=-2:{scale}" -crf 30 -y {output_folder}/GOES16_ABI_{compisite}_{year_str}.mp4')
         except Exception as e:
