@@ -35,11 +35,18 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
             print(f'El archivo {png_file} ya existe. Saltando procesamiento.')
             continue
         
-        # Proyección a EPSG:6372 y conversión a PNG en modo RGB
-        os.system(f'gdalwarp -t_srs EPSG:6372 {hour} {year_tmp_folder}/{name_file_conica}')
-        os.system(f'gdal_translate -of PNG -expand rgb {year_tmp_folder}/{name_file_conica} {png_file}')
-        # Eliminar archivo .tif después de la conversión
-        os.remove(f'{year_tmp_folder}/{name_file_conica}')
+        # Proyección a EPSG:6372 y conversión a PNG en modo RGB con chequeo de bandas
+        print(f'Procesando archivo TIFF: {hour}')
+        try:
+            # Convertir a RGB si tiene solo una banda
+            os.system(f'gdalwarp -t_srs EPSG:6372 {hour} {year_tmp_folder}/{name_file_conica}')
+            os.system(f'gdal_translate -of PNG -expand rgb {year_tmp_folder}/{name_file_conica} {png_file}')
+            
+            # Eliminar archivo .tif después de la conversión
+            os.remove(f'{year_tmp_folder}/{name_file_conica}')
+        except Exception as e:
+            print(f'Error procesando archivo {hour}: {e}')
+            continue
         
         # Añadir textos a la imagen PNG usando ffmpeg
         annotated_png = f'{year_tmp_folder}/annotated_{name_file_conica.replace("tif", "png")}'
@@ -49,10 +56,13 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
         time_text = hour_obj.strftime("%H:%M")
         
         # Añadir "GOES-16 ABI {compisite}" primero y luego la fecha y hora abajo, con GMT-6
-        os.system(f'ffmpeg -i {png_file} -vf "drawtext=text=\'GOES-16 ABI {compisite}\':fontfile={font_path}:'
-                  f'fontsize={font_size}:fontcolor={font_color}:x=10:y=h-th-50, '
-                  f'drawtext=text=\'{date_text} {time_text} GMT-6\':fontfile={font_path}:'
-                  f'fontsize={font_size}:fontcolor={font_color}:x=10:y=h-th-10" -y {annotated_png}')
+        try:
+            os.system(f'ffmpeg -i {png_file} -vf "drawtext=text=\'GOES-16 ABI {compisite}\':fontfile={font_path}:'
+                      f'fontsize={font_size}:fontcolor={font_color}:x=10:y=h-th-50, '
+                      f'drawtext=text=\'{date_text} {time_text} GMT-6\':fontfile={font_path}:'
+                      f'fontsize={font_size}:fontcolor={font_color}:x=10:y=h-th-10" -y {annotated_png}')
+        except Exception as e:
+            print(f'Error añadiendo texto con ffmpeg al archivo {png_file}: {e}')
     
     return glob(f'{year_tmp_folder}/annotated_*.png')
 
@@ -65,9 +75,12 @@ def create_animation(list_files, year_str, output_folder, compisite, framerate, 
             i += 1
 
         # Crear animación con ffmpeg usando los parámetros proporcionados
-        os.system(f'ffmpeg -framerate {framerate} -pattern_type glob -i "{os.path.dirname(list_files[0])}/s{year_str}_%04d.png" '
-                  f'-vcodec libx264 -r {outfps} -pix_fmt yuv420p -profile:v baseline -level 3 '
-                  f'-vf "scale=-2:{scale}" -crf 30 -y {output_folder}/GOES16_ABI_{compisite}_{year_str}.mp4')
+        try:
+            os.system(f'ffmpeg -framerate {framerate} -pattern_type glob -i "{os.path.dirname(list_files[0])}/s{year_str}_%04d.png" '
+                      f'-vcodec libx264 -r {outfps} -pix_fmt yuv420p -profile:v baseline -level 3 '
+                      f'-vf "scale=-2:{scale}" -crf 30 -y {output_folder}/GOES16_ABI_{compisite}_{year_str}.mp4')
+        except Exception as e:
+            print(f'Error creando animación para {year_str}: {e}')
 
 
 def process_year(year, pathTmp, pathOutput, font_path, font_size, font_color, framerate, outfps, scale, compisite):
@@ -139,4 +152,3 @@ if __name__ == "__main__":
     
     # Ejecutar el script principal
     main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, font_color, font_path)
-
