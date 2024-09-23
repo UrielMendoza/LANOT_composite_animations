@@ -10,6 +10,7 @@ Este script crea una animacion con datos de compuestos especificos RGB de GOES 1
 import os
 from glob import glob
 import datetime
+from PIL import Image
 
 
 def create_output_directories(pathTmp, year_str, pathOutput, compisite):
@@ -24,6 +25,17 @@ def create_output_directories(pathTmp, year_str, pathOutput, compisite):
     return year_tmp_folder, output_folder
 
 
+def convert_tiff_to_png(tiff_file, png_file):
+    try:
+        # Abre el archivo TIFF y lo convierte a RGB
+        with Image.open(tiff_file) as img:
+            img = img.convert("RGB")  # Asegurarse de que esté en modo RGB
+            img.save(png_file, "PNG")  # Guardar la imagen como PNG
+            print(f"Convertido TIFF a PNG: {png_file}")
+    except Exception as e:
+        print(f"Error al convertir TIFF a PNG: {e}")
+
+
 def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color, compisite):
     for hour in list_hours:
         name_file = hour.split('/')[-1]
@@ -35,18 +47,16 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
             print(f'El archivo {png_file} ya existe. Saltando procesamiento.')
             continue
         
-        # Proyección a EPSG:6372 y conversión a PNG en modo RGB con chequeo de bandas
-        print(f'Procesando archivo TIFF: {hour}')
-        try:
-            # Convertir a RGB si tiene solo una banda
-            os.system(f'gdalwarp -t_srs EPSG:6372 {hour} {year_tmp_folder}/{name_file_conica}')
-            os.system(f'gdal_translate -of PNG -expand rgb {year_tmp_folder}/{name_file_conica} {png_file}')
-            
-            # Eliminar archivo .tif después de la conversión
-            os.remove(f'{year_tmp_folder}/{name_file_conica}')
-        except Exception as e:
-            print(f'Error procesando archivo {hour}: {e}')
-            continue
+        # Proyección a EPSG:6372 con gdalwarp
+        tiff_reprojected = f'{year_tmp_folder}/{name_file_conica}'
+        os.system(f'gdalwarp -t_srs EPSG:6372 {hour} {tiff_reprojected}')
+
+        # Convertir TIFF a PNG usando Pillow
+        convert_tiff_to_png(tiff_reprojected, png_file)
+
+        # Eliminar archivo .tif después de la conversión
+        if os.path.exists(tiff_reprojected):
+            os.remove(tiff_reprojected)
         
         # Añadir textos a la imagen PNG usando ffmpeg
         annotated_png = f'{year_tmp_folder}/annotated_{name_file_conica.replace("tif", "png")}'
