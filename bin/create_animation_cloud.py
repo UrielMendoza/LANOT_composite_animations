@@ -51,15 +51,22 @@ for year in dirs_years:
             name_file = hour.split('/')[-1]
             name_file_conica = name_file.replace('Geo', 'conica')
             os.system(f'gdalwarp -t_srs EPSG:6372 {hour}/{name_file} {pathTmp}/{name_file_conica}')
-        # Pasa la tres imagenes a un png y los guarda igual en la carpeta temporal
-        os.system(f'convert -delay 100 {pathTmp}/*conica.tif {pathTmp}/animation_{date}.gif')
+            # Pasa los tif a png con gdal_translate
+            os.system(f'gdal_translate -of PNG {pathTmp}/{name_file_conica} {pathTmp}/{name_file_conica.replace("tif", "png")}')
     # Une las imagenes en una sola animacion por año, solo con las png, en formato mp4 con ffmpeg, le agrega el sensor GOES16_ABI mas el compuesto y el año
     # Crea primero la carpeta del año si no existe
     if not os.path.exists(f'{pathOutput}/{compisite}'):
         os.makedirs(f'{pathOutput}/{compisite}/{year_str}')
-    # Crea la animacion
+    # Renoombra los archivos para que sean numericos
+    list_files = glob(f'{pathTmp}/*.png')
+    list_files.sort()
+    i = 1
+    for file in list_files:
+        os.rename(file, f'{pathTmp}/s{year_str}_{str(i).zfill(4)}.png')
+        i += 1
+    # Crea la animacion con ffmpeg
     print('Creando animacion:', f'{pathOutput}/{compisite}/{year_str}/' + 'GOES16_ABI_' + compisite + '_' + year_str + '.mp4')
-    os.system(f'ffmpeg -r 3 -i {pathTmp}/animation_%Y%m%d.gif -vf "fps=3,format=yuv420p" {pathOutput}/{compisite}/{year_str}/' + 'GOES16_ABI_' + compisite + '_' + year_str + '.mp4')
+    os.system(f'ffmpeg -r 1 -i {pathTmp}/s{year_str}_%04d.png -vcodec libx264 -y {pathOutput}/{compisite}/{year_str}/' + 'GOES16_ABI_' + compisite + '_' + year_str + '.mp4')
 
     # Elimina los archivos temporales
     os.system(f'rm -rf {pathTmp}/*')
