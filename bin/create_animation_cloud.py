@@ -26,19 +26,13 @@ def create_output_directories(pathTmp, year_str, pathOutput, compisite):
     return year_tmp_folder, output_folder
 
 
-def convert_tiff_to_png(tiff_file, png_file):
+def convert_tiff_to_png_gdal(tiff_file, png_file):
     try:
-        # Abre el archivo TIFF y lo convierte a RGB usando numpy para asegurar los valores de 0-255
-        with Image.open(tiff_file) as img:
-            img = img.convert("RGB")  # Convertir la imagen a modo RGB
-            np_img = np.array(img)
-            # Normalizar los valores a 8 bits (0-255) si no están en ese rango
-            np_img = np.clip(np_img, 0, 255).astype(np.uint8)
-            img_rgb = Image.fromarray(np_img, "RGB")
-            img_rgb.save(png_file, "PNG")  # Guardar la imagen como PNG
-            print(f"Convertido TIFF a PNG: {png_file}")
+        # Usar gdal_translate para convertir TIFF a PNG
+        os.system(f'gdal_translate -of PNG {tiff_file} {png_file}')
+        print(f"Convertido TIFF a PNG con GDAL: {png_file}")
     except Exception as e:
-        print(f"Error al convertir TIFF a PNG: {e}")
+        print(f"Error al convertir TIFF a PNG con GDAL: {e}")
 
 
 def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color, compisite):
@@ -56,8 +50,8 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
         tiff_reprojected = f'{year_tmp_folder}/{name_file_conica}'
         os.system(f'gdalwarp -t_srs EPSG:6372 {hour} {tiff_reprojected}')
 
-        # Convertir TIFF a PNG usando Pillow
-        convert_tiff_to_png(tiff_reprojected, png_file)
+        # Convertir TIFF a PNG usando gdal_translate
+        convert_tiff_to_png_gdal(tiff_reprojected, png_file)
         
         # No eliminamos el archivo TIFF aquí, lo hacemos al final del año
 
@@ -70,9 +64,9 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
         
         # Añadir "GOES-16 ABI {compisite}" primero y luego la fecha y hora abajo, con GMT-6
         try:
-            os.system(f'ffmpeg -i {png_file} -vf "drawtext=text=\'GOES-16 ABI {compisite}\':fontfile={font_path}:' 
+            os.system(f'ffmpeg -i {png_file} -vf "drawtext=text=\'GOES-16 ABI {compisite}\':fontfile={font_path}:'
                       f'fontsize={font_size}:fontcolor={font_color}:x=10:y=h-th-50, '
-                      f'drawtext=text=\'{date_text} {time_text} GMT-6\':fontfile={font_path}:' 
+                      f'drawtext=text=\'{date_text} {time_text} GMT-6\':fontfile={font_path}:'
                       f'fontsize={font_size}:fontcolor={font_color}:x=10:y=h-th-10" -y {annotated_png}')
         except Exception as e:
             print(f'Error añadiendo texto con ffmpeg al archivo {png_file}: {e}')
