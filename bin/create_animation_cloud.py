@@ -50,9 +50,16 @@ for year in dirs_years:
         for hour in list_hours:
             name_file = hour.split('/')[-1]
             name_file_conica = name_file.replace('Geo', 'conica')
-            os.system(f'gdalwarp -t_srs EPSG:6372 {hour}/{name_file} {pathTmp}/{name_file_conica}')
-            # Pasa los tif a png con gdal_translate
-            os.system(f'gdal_translate -of PNG {pathTmp}/{name_file_conica} {pathTmp}/{name_file_conica.replace("tif", "png")}')
+            # Verificar si el archivo existe antes de procesarlo
+            if os.path.exists(hour):
+                print(f'Procesando archivo: {hour}')
+                # Proyección a EPSG:6372
+                os.system(f'gdalwarp -t_srs EPSG:6372 {hour} {pathTmp}/{name_file_conica}')
+                # Convertir a PNG
+                os.system(f'gdal_translate -of PNG {pathTmp}/{name_file_conica} {pathTmp}/{name_file_conica.replace("tif", "png")}')
+            else:
+                print(f'Archivo no encontrado: {hour}')
+
     # Une las imagenes en una sola animacion por año, solo con las png, en formato mp4 con ffmpeg, le agrega el sensor GOES16_ABI mas el compuesto y el año
     # Crea primero la carpeta del año si no existe
     if not os.path.exists(f'{pathOutput}/{compisite}'):
