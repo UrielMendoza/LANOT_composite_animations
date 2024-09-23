@@ -11,6 +11,7 @@ import os
 from glob import glob
 import datetime
 from PIL import Image
+import subprocess
 
 
 def create_output_directories(pathTmp, year_str, pathOutput, compisite):
@@ -23,6 +24,21 @@ def create_output_directories(pathTmp, year_str, pathOutput, compisite):
         os.makedirs(output_folder)
     
     return year_tmp_folder, output_folder
+
+
+def check_tiff_validity(tiff_file):
+    """Verificar si el archivo TIFF es válido utilizando gdalinfo"""
+    try:
+        result = subprocess.run(['gdalinfo', tiff_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if result.returncode == 0:
+            print(f'TIFF válido: {tiff_file}')
+            return True
+        else:
+            print(f'Error en el archivo TIFF: {tiff_file}\n{result.stderr.decode()}')
+            return False
+    except Exception as e:
+        print(f'Error al verificar TIFF: {tiff_file}, {e}')
+        return False
 
 
 def convert_tiff_to_png(tiff_file, png_file):
@@ -51,8 +67,13 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
         tiff_reprojected = f'{year_tmp_folder}/{name_file_conica}'
         os.system(f'gdalwarp -t_srs EPSG:6372 {hour} {tiff_reprojected}')
 
-        # Convertir TIFF a PNG usando Pillow
-        convert_tiff_to_png(tiff_reprojected, png_file)
+        # Verificar si el archivo TIFF proyectado es válido
+        if check_tiff_validity(tiff_reprojected):
+            # Convertir TIFF a PNG usando Pillow
+            convert_tiff_to_png(tiff_reprojected, png_file)
+        else:
+            print(f'Error: El archivo TIFF proyectado no es válido y será omitido: {tiff_reprojected}')
+            continue
         
         # No eliminamos el archivo TIFF aquí, lo hacemos al final del año
 
