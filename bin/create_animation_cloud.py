@@ -52,7 +52,7 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
         # Añadir "GOES-16 ABI {compisite}" primero y luego la fecha y hora abajo
         os.system(f'ffmpeg -i {png_file} -vf "drawtext=text=\'GOES-16 ABI {compisite}\':fontfile={font_path}:'
                   f'fontsize={font_size}:fontcolor={font_color}:x=10:y=h-th-50, '
-                  f'drawtext=text=\'{date_text} {time_text}\':fontfile={font_path}:'
+                  f'drawtext=text=\'{date_text} {time_text} GMT-6\':fontfile={font_path}:'
                   f'fontsize={font_size}:fontcolor={font_color}:x=10:y=h-th-10" -y {annotated_png}')
     
     return glob(f'{year_tmp_folder}/annotated_*.png')
@@ -101,7 +101,7 @@ def process_year(year, pathTmp, pathOutput, font_path, font_size, font_color, fr
                 break
 
         list_hours.sort()
-        print('Archivos seleccionados para procesar:', list_hours)
+        print('Archivos seleccionados para procesar:', len(list_hours))
 
         # Procesar imágenes
         list_files = process_images(list_hours, year_tmp_folder, font_path, font_size, font_color, compisite)
