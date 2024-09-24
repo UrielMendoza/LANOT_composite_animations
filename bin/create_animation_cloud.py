@@ -10,6 +10,7 @@ Este script crea una animacion con datos de compuestos especificos RGB de GOES 1
 import os
 from glob import glob
 import datetime
+from PIL import Image, ImageDraw, ImageFont
 
 
 def create_output_directories(pathTmp, year_str, pathOutput, compisite):
@@ -26,11 +27,36 @@ def create_output_directories(pathTmp, year_str, pathOutput, compisite):
 
 def convert_tiff_to_png_gdal(tiff_file, png_file):
     try:
-        # Usar gdal_translate para convertir TIFF a PNG, asegurando 8 bits de salida
-        os.system(f'gdal_translate -scale 0 255 0 255 -ot Byte -of PNG {tiff_file} {png_file}')
+        # Usar gdal_translate para convertir TIFF a PNG con 16 bits enteros
+        os.system(f'gdal_translate -ot UInt16 -of PNG {tiff_file} {png_file}')
         print(f"Convertido TIFF a PNG con GDAL: {png_file}")
     except Exception as e:
         print(f"Error al convertir TIFF a PNG con GDAL: {e}")
+
+
+def add_text_and_logo_to_image(png_file, font_path, font_size, font_color, date_text, time_text, logo_path):
+    try:
+        # Abrir la imagen PNG
+        img = Image.open(png_file).convert("RGB")
+        draw = ImageDraw.Draw(img)
+        
+        # Cargar la fuente
+        font = ImageFont.truetype(font_path, font_size)
+        
+        # Añadir el texto a la imagen (GOES-16 ABI y la fecha/hora)
+        draw.text((10, img.height - font_size - 50), f"GOES-16 ABI", font=font, fill=font_color)
+        draw.text((10, img.height - font_size - 10), f"{date_text} {time_text} GMT-6", font=font, fill=font_color)
+
+        # Añadir el logo en la esquina superior derecha
+        logo = Image.open(logo_path).convert("RGBA")
+        logo_width, logo_height = logo.size
+        img.paste(logo, (img.width - logo_width - 10, 10), logo)
+
+        # Guardar la imagen con el texto y el logo
+        img.save(png_file)
+        print(f"Texto y logo añadidos a: {png_file}")
+    except Exception as e:
+        print(f"Error añadiendo texto y logo a la imagen: {e}")
 
 
 def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color, compisite, logo_path):
@@ -53,23 +79,16 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
         
         # No eliminamos el archivo TIFF aquí, lo hacemos al final del año
 
-        # Añadir textos y logo a la imagen PNG usando ffmpeg
-        annotated_png = f'{year_tmp_folder}/annotated_{name_file_conica.replace("tif", "png")}'
+        # Extraer la fecha y hora del archivo
         date_obj = datetime.datetime.strptime(name_file.split('_')[3], 's%Y%m%d')
         hour_obj = datetime.datetime.strptime(name_file.split('_')[4], '%H%MCDMX')
         date_text = date_obj.strftime("%Y-%m-%d")
         time_text = hour_obj.strftime("%H:%M")
-        
-        # Añadir "GOES-16 ABI {compisite}" primero, luego la fecha y hora abajo, con GMT-6 y el logo en la esquina superior derecha
-        try:
-            os.system(f'ffmpeg -i {png_file} -i {logo_path} -filter_complex "overlay=W-w-10:H-h-10, '
-                      f'drawtext=text=\'GOES-16 ABI {compisite}\':fontfile={font_path}:fontsize={font_size}:fontcolor={font_color}:x=10:y=h-th-50, '
-                      f'drawtext=text=\'{date_text} {time_text} GMT-6\':fontfile={font_path}:fontsize={font_size}:fontcolor={font_color}:x=10:y=h-th-10" '
-                      f'-y {annotated_png}')
-        except Exception as e:
-            print(f'Error añadiendo texto y logo con ffmpeg al archivo {png_file}: {e}')
+
+        # Añadir texto y logo a la imagen PNG
+        add_text_and_logo_to_image(png_file, font_path, font_size, font_color, date_text, time_text, logo_path)
     
-    return glob(f'{year_tmp_folder}/annotated_*.png')
+    return glob(f'{year_tmp_folder}/*.png')
 
 
 def create_animation(list_files, year_str, output_folder, compisite, framerate, outfps, scale):
@@ -109,17 +128,17 @@ def process_year(year, pathTmp, pathOutput, font_path, font_size, font_color, fr
     # Crear las carpetas necesarias
     year_tmp_folder, output_folder = create_output_directories(pathTmp, year_str, pathOutput, compisite)
     
-    # Cambiar la búsqueda de las imágenes por hora usando glob
-    print('Buscando imágenes para las 11, 13 y 15 horas')
-    hours = {'11': False, '13': False, '15': False}
+    # Búsqueda de las imágenes por hora usando glob
+    print('Buscando imágenes para las 11, 13 y 15 horas de cada día del año.')
     list_hours = []
     
-    for hour_str in hours.keys():
-        # Buscar archivos que contengan la hora específica
-        files = glob(f'{year}/*/*_{hour_str}*CDMX*.tif')
-        if files:
-            list_hours.append(files[0])  # Agregar solo el primer archivo encontrado para esa hora
-            print(f'Imagen seleccionada para las {hour_str}: {files[0]}')
+    for day in glob(f'{year}/*/'):
+        for hour in [11, 13, 15]:
+            # Buscar archivos que contengan la hora específica
+            files = glob(f'{day}/*_{hour:02d}*CDMX*.tif')
+            if files:
+                list_hours.append(files[0])  # Agregar solo el primer archivo encontrado para esa hora
+                print(f'Imagen seleccionada para las {hour}: {files[0]}')
     
     print(f'Total de archivos seleccionados para procesar: {len(list_hours)}')
 
@@ -130,7 +149,7 @@ def process_year(year, pathTmp, pathOutput, font_path, font_size, font_color, fr
     create_animation(list_files, year_str, output_folder, compisite, framerate, outfps, scale)
 
     # Eliminar los archivos TIFF después de que se haya creado la animación
-    #delete_tiff_files(year_tmp_folder)
+    delete_tiff_files(year_tmp_folder)
 
 
 def main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, font_color, font_path, logo_path, compisite='DayLandCloudFire'):
@@ -156,4 +175,5 @@ if __name__ == "__main__":
     
     # Ejecutar el script principal
     main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, font_color, font_path, logo_path)
+
 
