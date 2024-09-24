@@ -91,7 +91,7 @@ def add_text_and_logo_to_image(png_file, font_path, font_size, font_color, date_
         # Cargar la fuente
         font = ImageFont.truetype(font_path, font_size)
         
-        # Añadir el texto a la imagen (GOES-16 ABI y la fecha/hora)
+        # Añadir el texto a la imagen (GOES-16 ABI {compisite} y la fecha/hora)
         draw.text((10, img.height - font_size - 50), f"GOES-16 ABI {compisite}", font=font, fill=font_color)
         draw.text((10, img.height - font_size - 10), f"{date_text} {time_text} GMT-6", font=font, fill=font_color)
 
@@ -131,8 +131,8 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
         date_text = date_obj.strftime("%Y-%m-%d")
         time_text = hour_obj.strftime("%H:%M")
 
-        # Añadir texto y logo a la imagen PNG
-        add_text_and_logo_to_image(png_file, font_path, font_size, font_color, date_text, time_text, logo_path, name_file.split('_')[-1].replace(".tif", ""))
+        # Añadir texto y logo a la imagen PNG, usando el nombre del compuesto (compisite)
+        add_text_and_logo_to_image(png_file, font_path, font_size, font_color, date_text, time_text, logo_path, compisite)
         
         # Eliminar el archivo TIFF
         try:
@@ -199,7 +199,6 @@ def main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, fo
 
 
 if __name__ == "__main__":
-
     # Parámetros configurables
     pathInput = '/datawork/fires_data/bandas_productos_y_compuestos_goes16_conus/08_compuestos_geo_mex'
     pathOutput = '/datawork/datawork_tmp/LANOT_animacion_nubes/output'
@@ -215,3 +214,4 @@ if __name__ == "__main__":
     
     # Ejecutar el script principal
     main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, font_color, font_path, logo_path)
+
