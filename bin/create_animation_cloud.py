@@ -12,7 +12,7 @@ from glob import glob
 import datetime
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
-
+from osgeo import gdal
 
 def create_output_directories(pathTmp, year_str, pathOutput, compisite):
     year_tmp_folder = f'{pathTmp}/{year_str}'
@@ -27,34 +27,47 @@ def create_output_directories(pathTmp, year_str, pathOutput, compisite):
 
 
 def normalize_band(band):
-    """Normalizar la banda de datos para que esté entre 0 y 255"""
+    """Normaliza una banda de datos para que esté entre 0 y 255"""
     band_min = np.min(band)
     band_max = np.max(band)
-    normalized_band = ((band - band_min) / (band_max - band_min) * 255).astype(np.uint16)
+    normalized_band = ((band - band_min) / (band_max - band_min) * 255).astype(np.uint8)
     return normalized_band
 
 
-def convert_tiff_to_png_pil(tiff_file, png_file):
+def array2rasterImageRGB(R, G, B):
+    """
+    Convierte tres arrays en una imagen RGB.
+    
+    :param R: Array de bytes
+    :param G: Array de bytes
+    :param B: Array de bytes
+    :return: Imagen RGB
+    """
+    imarr = np.dstack((R, G, B))
+    return Image.fromarray(imarr, "RGB")
+
+
+def convert_tiff_to_png_custom(tiff_file, png_file):
     try:
-        # Abrir el archivo TIFF usando PIL
-        tiff_img = Image.open(tiff_file)
+        # Usar GDAL para abrir el archivo TIFF y extraer las bandas
+        dataset = gdal.Open(tiff_file)
+        R_band = dataset.GetRasterBand(1).ReadAsArray()
+        G_band = dataset.GetRasterBand(2).ReadAsArray()
+        B_band = dataset.GetRasterBand(3).ReadAsArray()
         
-        # Suponiendo que el TIFF tiene 3 bandas (R, G, B)
-        bands = []
-        for i in range(3):
-            band = np.array(tiff_img.getband(i))
-            # Normalizar la banda
-            normalized_band = normalize_band(band)
-            bands.append(normalized_band)
+        # Normalizar las bandas
+        R = normalize_band(R_band)
+        G = normalize_band(G_band)
+        B = normalize_band(B_band)
         
-        # Crear una imagen RGB combinando las bandas
-        rgb_img = Image.merge("RGB", [Image.fromarray(band) for band in bands])
+        # Crear imagen RGB
+        img_rgb = array2rasterImageRGB(R, G, B)
         
         # Guardar la imagen como PNG
-        rgb_img.save(png_file)
-        print(f"Convertido TIFF a PNG usando PIL: {png_file}")
+        img_rgb.save(png_file)
+        print(f"Convertido TIFF a PNG usando custom: {png_file}")
     except Exception as e:
-        print(f"Error al convertir TIFF a PNG con PIL: {e}")
+        print(f"Error al convertir TIFF a PNG con método personalizado: {e}")
 
 
 def add_text_and_logo_to_image(png_file, font_path, font_size, font_color, date_text, time_text, logo_path):
@@ -97,8 +110,8 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
         tiff_reprojected = f'{year_tmp_folder}/{name_file_conica}'
         os.system(f'gdalwarp -t_srs EPSG:6372 {hour} {tiff_reprojected}')
 
-        # Convertir TIFF a PNG usando PIL
-        convert_tiff_to_png_pil(tiff_reprojected, png_file)
+        # Convertir TIFF a PNG usando método personalizado
+        convert_tiff_to_png_custom(tiff_reprojected, png_file)
         
         # No eliminamos el archivo TIFF aquí, lo hacemos al final del año
 
