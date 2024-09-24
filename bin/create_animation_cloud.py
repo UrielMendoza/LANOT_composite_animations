@@ -96,7 +96,7 @@ def delete_tiff_files(year_tmp_folder):
     tiff_files = glob(f'{year_tmp_folder}/*.tif')
     for tiff_file in tiff_files:
         try:
-            os.remove(tiff_file)
+            #os.remove(tiff_file)
             print(f'Archivo TIFF eliminado: {tiff_file}')
         except Exception as e:
             print(f'Error eliminando TIFF: {e}')
