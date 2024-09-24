@@ -145,7 +145,7 @@ if __name__ == "__main__":
     pathInput = '/datawork/fires_data/bandas_productos_y_compuestos_goes16_conus/08_compuestos_geo_mex'
     pathOutput = '/datawork/datawork_tmp/LANOT_animacion_nubes/output'
     pathTmp = '/datawork/datawork_tmp/LANOT_animacion_nubes/tmp'
-    logo_path = '/datawork/img/lanot_logo_b.png'  # Ruta al logo
+    logo_path = '/home/urielm/LANOT_composite_animations/img/lanot_logo_b.png'  # Ruta al logo
 
     framerate = 1  # Frames por segundo
     outfps = 10  # Frames por segundo de salida para el video
@@ -156,3 +156,4 @@ if __name__ == "__main__":
     
     # Ejecutar el script principal
     main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, font_color, font_path, logo_path)
+
