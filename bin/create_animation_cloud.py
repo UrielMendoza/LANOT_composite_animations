@@ -26,6 +26,14 @@ def create_output_directories(pathTmp, year_str, pathOutput, compisite):
     return year_tmp_folder, output_folder
 
 
+def get_min_max_band(band):
+    """Obtiene los valores mínimos y máximos de una banda"""
+    band_min = band.GetMinimum()
+    band_max = band.GetMaximum()
+    if band_min is None or band_max is None:
+        band_min, band_max = band.ComputeRasterMinMax(1)  # Calcular si no está disponible
+    return band_min, band_max
+
 def normalize_band_custom(band, band_min, band_max):
     """Normaliza una banda de datos usando valores mínimos y máximos personalizados"""
     if band_max == band_min:  # Si todos los valores son iguales, devolver una banda en blanco
@@ -54,10 +62,10 @@ def convert_tiff_to_png_custom(tiff_file, png_file):
         G_band = dataset.GetRasterBand(2).ReadAsArray()
         B_band = dataset.GetRasterBand(3).ReadAsArray()
         
-        # Valores mínimos y máximos para cada banda (basado en los datos proporcionados)
-        R_min, R_max = 0.00127, 0.339364
-        G_min, G_max = 0.0142842, 0.693332
-        B_min, B_max = 0.0358722, 0.675553
+        # Obtener los valores mínimos y máximos de cada banda
+        R_min, R_max = get_min_max_band(dataset.GetRasterBand(1))
+        G_min, G_max = get_min_max_band(dataset.GetRasterBand(2))
+        B_min, B_max = get_min_max_band(dataset.GetRasterBand(3))
         
         # Normalizar las bandas usando los valores mínimos y máximos
         R = normalize_band_custom(R_band, R_min, R_max)
@@ -74,7 +82,7 @@ def convert_tiff_to_png_custom(tiff_file, png_file):
         print(f"Error al convertir TIFF a PNG con método personalizado: {e}")
 
 
-def add_text_and_logo_to_image(png_file, font_path, font_size, font_color, date_text, time_text, logo_path):
+def add_text_and_logo_to_image(png_file, font_path, font_size, font_color, date_text, time_text, logo_path, compisite):
     try:
         # Abrir la imagen PNG
         img = Image.open(png_file).convert("RGB")
@@ -84,7 +92,7 @@ def add_text_and_logo_to_image(png_file, font_path, font_size, font_color, date_
         font = ImageFont.truetype(font_path, font_size)
         
         # Añadir el texto a la imagen (GOES-16 ABI y la fecha/hora)
-        draw.text((10, img.height - font_size - 50), f"GOES-16 ABI", font=font, fill=font_color)
+        draw.text((10, img.height - font_size - 50), f"GOES-16 ABI {compisite}", font=font, fill=font_color)
         draw.text((10, img.height - font_size - 10), f"{date_text} {time_text} GMT-6", font=font, fill=font_color)
 
         # Añadir el logo en la esquina superior derecha
@@ -117,8 +125,6 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
         # Convertir TIFF a PNG usando método personalizado
         convert_tiff_to_png_custom(tiff_reprojected, png_file)
         
-        # No eliminamos el archivo TIFF aquí, lo hacemos al final del año
-
         # Extraer la fecha y hora del archivo
         date_obj = datetime.datetime.strptime(name_file.split('_')[3], 's%Y%m%d')
         hour_obj = datetime.datetime.strptime(name_file.split('_')[4], '%H%MCDMX')
@@ -126,7 +132,14 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
         time_text = hour_obj.strftime("%H:%M")
 
         # Añadir texto y logo a la imagen PNG
-        add_text_and_logo_to_image(png_file, font_path, font_size, font_color, date_text, time_text, logo_path)
+        add_text_and_logo_to_image(png_file, font_path, font_size, font_color, date_text, time_text, logo_path, name_file.split('_')[-1].replace(".tif", ""))
+        
+        # Eliminar el archivo TIFF
+        try:
+            os.remove(tiff_reprojected)
+            print(f'Archivo TIFF eliminado: {tiff_reprojected}')
+        except Exception as e:
+            print(f'Error eliminando TIFF: {e}')
     
     return glob(f'{year_tmp_folder}/*.png')
 
@@ -148,17 +161,6 @@ def create_animation(list_files, year_str, output_folder, compisite, framerate, 
                       f'-vf "scale=-2:{scale}" -crf 30 -y {output_folder}/GOES16_ABI_{compisite}_{year_str}.mp4')
         except Exception as e:
             print(f'Error creando animación para {year_str}: {e}')
-
-
-def delete_tiff_files(year_tmp_folder):
-    # Eliminar todos los archivos .tif después de crear la animación
-    tiff_files = glob(f'{year_tmp_folder}/*.tif')
-    for tiff_file in tiff_files:
-        try:
-            os.remove(tiff_file)
-            print(f'Archivo TIFF eliminado: {tiff_file}')
-        except Exception as e:
-            print(f'Error eliminando TIFF: {e}')
 
 
 def process_year(year, pathTmp, pathOutput, font_path, font_size, font_color, framerate, outfps, scale, compisite, logo_path):
@@ -187,9 +189,6 @@ def process_year(year, pathTmp, pathOutput, font_path, font_size, font_color, fr
     
     # Crear animación para este año
     create_animation(list_files, year_str, output_folder, compisite, framerate, outfps, scale)
-
-    # Eliminar los archivos TIFF después de que se haya creado la animación
-    delete_tiff_files(year_tmp_folder)
 
 
 def main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, font_color, font_path, logo_path, compisite='DayLandCloudFire'):
