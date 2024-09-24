@@ -30,6 +30,8 @@ def normalize_band(band):
     """Normaliza una banda de datos para que esté entre 0 y 255"""
     band_min = np.min(band)
     band_max = np.max(band)
+    if band_max == band_min:  # Si todos los valores son iguales
+        return np.zeros_like(band, dtype=np.uint8)
     normalized_band = ((band - band_min) / (band_max - band_min) * 255).astype(np.uint8)
     return normalized_band
 
@@ -211,6 +213,7 @@ if __name__ == "__main__":
     
     # Ejecutar el script principal
     main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, font_color, font_path, logo_path)
+
 
 
 
