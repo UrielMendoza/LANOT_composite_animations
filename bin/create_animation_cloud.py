@@ -11,6 +11,7 @@ import os
 from glob import glob
 import datetime
 from PIL import Image, ImageDraw, ImageFont
+import numpy as np
 
 
 def create_output_directories(pathTmp, year_str, pathOutput, compisite):
@@ -25,13 +26,35 @@ def create_output_directories(pathTmp, year_str, pathOutput, compisite):
     return year_tmp_folder, output_folder
 
 
-def convert_tiff_to_png_gdal(tiff_file, png_file):
+def normalize_band(band):
+    """Normalizar la banda de datos para que esté entre 0 y 255"""
+    band_min = np.min(band)
+    band_max = np.max(band)
+    normalized_band = ((band - band_min) / (band_max - band_min) * 255).astype(np.uint16)
+    return normalized_band
+
+
+def convert_tiff_to_png_pil(tiff_file, png_file):
     try:
-        # Usar gdal_translate para convertir TIFF a PNG con 16 bits enteros
-        os.system(f'gdal_translate -ot UInt16 -of PNG {tiff_file} {png_file}')
-        print(f"Convertido TIFF a PNG con GDAL: {png_file}")
+        # Abrir el archivo TIFF usando PIL
+        tiff_img = Image.open(tiff_file)
+        
+        # Suponiendo que el TIFF tiene 3 bandas (R, G, B)
+        bands = []
+        for i in range(3):
+            band = np.array(tiff_img.getband(i))
+            # Normalizar la banda
+            normalized_band = normalize_band(band)
+            bands.append(normalized_band)
+        
+        # Crear una imagen RGB combinando las bandas
+        rgb_img = Image.merge("RGB", [Image.fromarray(band) for band in bands])
+        
+        # Guardar la imagen como PNG
+        rgb_img.save(png_file)
+        print(f"Convertido TIFF a PNG usando PIL: {png_file}")
     except Exception as e:
-        print(f"Error al convertir TIFF a PNG con GDAL: {e}")
+        print(f"Error al convertir TIFF a PNG con PIL: {e}")
 
 
 def add_text_and_logo_to_image(png_file, font_path, font_size, font_color, date_text, time_text, logo_path):
@@ -74,8 +97,8 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
         tiff_reprojected = f'{year_tmp_folder}/{name_file_conica}'
         os.system(f'gdalwarp -t_srs EPSG:6372 {hour} {tiff_reprojected}')
 
-        # Convertir TIFF a PNG usando gdal_translate
-        convert_tiff_to_png_gdal(tiff_reprojected, png_file)
+        # Convertir TIFF a PNG usando PIL
+        convert_tiff_to_png_pil(tiff_reprojected, png_file)
         
         # No eliminamos el archivo TIFF aquí, lo hacemos al final del año
 
@@ -175,5 +198,6 @@ if __name__ == "__main__":
     
     # Ejecutar el script principal
     main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, font_color, font_path, logo_path)
+
 
 
