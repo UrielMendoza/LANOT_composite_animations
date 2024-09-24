@@ -26,15 +26,12 @@ def create_output_directories(pathTmp, year_str, pathOutput, compisite):
     return year_tmp_folder, output_folder
 
 
-def normalize_band(band):
-    """Normaliza una banda de datos para que esté entre 0 y 255"""
-    band_min = np.min(band)
-    band_max = np.max(band)
-    if band_max == band_min:  # Si todos los valores son iguales
+def normalize_band_custom(band, band_min, band_max):
+    """Normaliza una banda de datos usando valores mínimos y máximos personalizados"""
+    if band_max == band_min:  # Si todos los valores son iguales, devolver una banda en blanco
         return np.zeros_like(band, dtype=np.uint8)
     normalized_band = ((band - band_min) / (band_max - band_min) * 255).astype(np.uint8)
     return normalized_band
-
 
 def array2rasterImageRGB(R, G, B):
     """
@@ -57,10 +54,15 @@ def convert_tiff_to_png_custom(tiff_file, png_file):
         G_band = dataset.GetRasterBand(2).ReadAsArray()
         B_band = dataset.GetRasterBand(3).ReadAsArray()
         
-        # Normalizar las bandas
-        R = normalize_band(R_band)
-        G = normalize_band(G_band)
-        B = normalize_band(B_band)
+        # Valores mínimos y máximos para cada banda (basado en los datos proporcionados)
+        R_min, R_max = 0.00127, 0.339364
+        G_min, G_max = 0.0142842, 0.693332
+        B_min, B_max = 0.0358722, 0.675553
+        
+        # Normalizar las bandas usando los valores mínimos y máximos
+        R = normalize_band_custom(R_band, R_min, R_max)
+        G = normalize_band_custom(G_band, G_min, G_max)
+        B = normalize_band_custom(B_band, B_min, B_max)
         
         # Crear imagen RGB
         img_rgb = array2rasterImageRGB(R, G, B)
@@ -198,6 +200,7 @@ def main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, fo
 
 
 if __name__ == "__main__":
+
     # Parámetros configurables
     pathInput = '/datawork/fires_data/bandas_productos_y_compuestos_goes16_conus/08_compuestos_geo_mex'
     pathOutput = '/datawork/datawork_tmp/LANOT_animacion_nubes/output'
@@ -213,7 +216,3 @@ if __name__ == "__main__":
     
     # Ejecutar el script principal
     main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, font_color, font_path, logo_path)
-
-
-
-
