@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw, ImageFont
 import numpy as np
 from osgeo import gdal
 
+
 def create_output_directories(pathTmp, year_str, pathOutput, compisite):
     year_tmp_folder = f'{pathTmp}/{year_str}'
     if not os.path.exists(year_tmp_folder):
@@ -146,6 +147,9 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
 
 def create_animation(list_files, year_str, output_folder, compisite, framerate, outfps, scale):
     if list_files:
+        # Ordenar los archivos por día y hora en el nombre
+        list_files.sort(key=lambda f: (f.split('_')[3], f.split('_')[4]))  # Ordenar por fecha y hora extraída del nombre
+
         i = 1
         for file in list_files:
             new_file = f'{os.path.dirname(file)}/s{year_str}_{str(i).zfill(4)}.png'
@@ -214,4 +218,5 @@ if __name__ == "__main__":
     
     # Ejecutar el script principal
     main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, font_color, font_path, logo_path)
+
 
