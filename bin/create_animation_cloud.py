@@ -108,6 +108,22 @@ def add_text_and_logo_to_image(png_file, font_path, font_size, font_color, date_
         print(f"Error añadiendo texto y logo a la imagen: {e}")
 
 
+def extract_datetime_from_filename(filename):
+    """
+    Extrae el objeto datetime desde el nombre del archivo.
+    
+    El nombre del archivo tiene este formato:
+    OR_ABI-L2-MCMIPC-M3_G16_s20180705_0702CDMX_s20180705_1202UTC_DayLandCloudFire_Mex_conica.png
+    """
+    parts = filename.split('_')
+    date_part = parts[3][1:]  # Extraer la parte sYYYYMMDD y quitar la 's'
+    time_part = parts[4][:4]  # Extraer la parte HHMMCDMX y quitar CDMX
+    
+    # Convertir a objeto datetime
+    dt = datetime.datetime.strptime(f"{date_part} {time_part}", "%Y%m%d %H%M")
+    return dt
+
+
 def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color, compisite, logo_path):
     for hour in list_hours:
         name_file = hour.split('/')[-1]
@@ -147,8 +163,8 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
 
 def create_animation(list_files, year_str, output_folder, compisite, framerate, outfps, scale):
     if list_files:
-        # Ordenar los archivos por día y hora en el nombre
-        list_files.sort(key=lambda f: (f.split('_')[3], f.split('_')[4]))  # Ordenar por fecha y hora extraída del nombre
+        # Ordenar los archivos por el objeto datetime extraído del nombre
+        list_files.sort(key=lambda f: extract_datetime_from_filename(f))  # Ordenar cronológicamente por fecha y hora
 
         i = 1
         for file in list_files:
@@ -191,7 +207,7 @@ def process_year(year, pathTmp, pathOutput, font_path, font_size, font_color, fr
     # Procesar imágenes
     list_files = process_images(list_hours, year_tmp_folder, font_path, font_size, font_color, compisite, logo_path)
     
-    # Crear animación para este año
+    # Crear animación para este año, asegurando la correcta ordenación cronológica
     create_animation(list_files, year_str, output_folder, compisite, framerate, outfps, scale)
 
 
@@ -218,5 +234,6 @@ if __name__ == "__main__":
     
     # Ejecutar el script principal
     main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, font_color, font_path, logo_path)
+
 
 
