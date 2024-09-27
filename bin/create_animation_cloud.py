@@ -115,13 +115,19 @@ def extract_datetime_from_filename(filename):
     El nombre del archivo tiene este formato:
     OR_ABI-L2-MCMIPC-M3_G16_s20180705_0702CDMX_s20180705_1202UTC_DayLandCloudFire_Mex_conica.png
     """
-    parts = filename.split('_')
-    date_part = parts[3][1:]  # Extraer la parte sYYYYMMDD y quitar la 's'
-    time_part = parts[4][:4]  # Extraer la parte HHMMCDMX y quitar CDMX
-    
-    # Convertir a objeto datetime
-    dt = datetime.datetime.strptime(f"{date_part} {time_part}", "%Y%m%d %H%M")
-    return dt
+    try:
+        # Extraer solo el nombre del archivo sin la ruta completa
+        name_file = os.path.basename(filename)
+        parts = name_file.split('_')
+        date_part = parts[3][1:]  # Extraer la parte sYYYYMMDD y quitar la 's'
+        time_part = parts[4][:4]  # Extraer la parte HHMMCDMX y quitar CDMX
+        
+        # Convertir a objeto datetime
+        dt = datetime.datetime.strptime(f"{date_part} {time_part}", "%Y%m%d %H%M")
+        return dt
+    except Exception as e:
+        print(f"Error extrayendo datetime de {filename}: {e}")
+        return None
 
 
 def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color, compisite, logo_path):
@@ -164,6 +170,7 @@ def process_images(list_hours, year_tmp_folder, font_path, font_size, font_color
 def create_animation(list_files, year_str, output_folder, compisite, framerate, outfps, scale):
     if list_files:
         # Ordenar los archivos por el objeto datetime extraído del nombre
+        list_files = [file for file in list_files if extract_datetime_from_filename(file) is not None]  # Filtrar archivos válidos
         list_files.sort(key=lambda f: extract_datetime_from_filename(f))  # Ordenar cronológicamente por fecha y hora
 
         i = 1
