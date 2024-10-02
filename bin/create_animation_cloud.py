@@ -218,7 +218,7 @@ def process_year(year, pathTmp, pathOutput, font_path, font_size, font_color, fr
     create_animation(list_files, year_str, output_folder, compisite, framerate, outfps, scale)
 
 
-def main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, font_color, font_path, logo_path, compisite='DayLandCloudFire'):
+def main(pathInput, pathOutput, pathTmp, framerate, outfps, scale, font_size, font_color, font_path, logo_path, compisite='TrueColor'):
     dirs_years = glob(f'{pathInput}/{compisite}/*')
 
     for year in dirs_years:
